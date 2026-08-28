@@ -93,6 +93,7 @@ cc -D_POSIX_C_SOURCE=200809L -std=c99 -Wall -Wextra -Wpedantic -Werror \
 ./build/test-ttsd
 sh tests/test_timed.sh
 sh tests/test_timed_timeout.sh
+sh tests/test_micd_capture_path.sh
 ./build/libreecho-web --backend mock --config "$CFG" --mock-config ./config/mock-state.json --web-root ./web --listen "127.0.0.1:$PORT" --seed 42 --dev-controls >./build/test-server.log 2>&1 &
 pid=$!
 cleanup(){ if [ "${pid:-0}" -gt 1 ]; then kill "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true; fi; }

@@ -16,6 +16,7 @@ SOCKET=${SOCKET:-/run/libreecho/mic.sock}
 CONFIG=${CONFIG:-/data/libreecho/config/web-config.json}
 CAPTURE_MUX=${CAPTURE_MUX:-/usr/local/sbin/libreecho-capture-mux}
 CAPTURE_BIN=${CAPTURE_BIN:-/sbin/tinycap}
+BYPASS_MUX=${BYPASS_MUX:-/data/libreecho/config/bypass-capture-mux}
 MIC_INJECT_DIR=${MIC_INJECT_DIR:-/run/libreecho/mic-inject}
 ARGS=${ARGS:---foreground --socket $SOCKET}
 
@@ -29,6 +30,26 @@ ARGS=${ARGS:---foreground --socket $SOCKET}
 # start is far worse than losing the ability to inject test audio, so the mux
 # is only used when it is actually present and executable.
 select_capture_path() {
+    # Diagnostic escape hatch: touch /data/libreecho/config/bypass-capture-mux
+    # to have micd exec the codec directly, with the mux out of the path.
+    #
+    # micd builds the tinycap argv itself, and the mux does not interpret it --
+    # it re-execs tinycap with the same flags -- so this is the same capture
+    # invocation with one process removed. That is what makes it a useful
+    # measurement: if a fault survives with the mux gone, the mux is not
+    # causing it.
+    #
+    # It was added to decide whether the mux or the codec corrupts the
+    # microphone stream after a playback. It did not: the fault was identical
+    # either way, which is what moved the search down into the kernel capture
+    # path.
+    #
+    # Injection stops working while this is set, which is the point -- audio
+    # injected into the mux bypasses the very path being measured.
+    if [ -f "$BYPASS_MUX" ]; then
+        printf '%s\n' "$CAPTURE_BIN"
+        return 0
+    fi
     if [ -x "$CAPTURE_MUX" ]; then
         mkdir -p "$MIC_INJECT_DIR"
         LE_CAPTURE_MUX_BIN=$CAPTURE_BIN
